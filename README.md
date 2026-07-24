@@ -2,12 +2,14 @@
 
 # 🛡️ Semantic Guardian
 
-**The meaning-layer for your data catalog.**
+**A code reviewer for the *meaning* of your data.**
 
-An AI agent that catches the silent data failures every monitoring tool misses — the ones where
-nothing errors, every check passes, and your ML models quietly rot. It reasons over
-[DataHub](https://datahub.com) lineage to find what breaks, validates with a human, writes the
-finding back to the catalog, and opens a fix PR.
+When an engineer changes a data pipeline, Semantic Guardian reviews that change against your
+organization's approved business semantics — *before it merges*. It reads the code diff, reconciles
+it with [DataHub](https://datahub.com)'s lineage, ownership, and contracts, flags high-confidence
+semantic violations, computes the downstream ML blast radius, routes the decision to the right
+owner, and compiles that decision into a **durable, machine-enforceable contract** so the same
+breakage is caught deterministically next time.
 
 *Built for the [Build with DataHub: Agent Hackathon](https://datahub.devpost.com) — Production ML Agents.*
 
@@ -17,46 +19,57 @@ finding back to the catalog, and opens a fix PR.
 
 ## The problem
 
-The ML failures that cost the most money are the ones where **everything technically passes**:
+The ML failures that cost the most money are silent semantic changes — where a column's *meaning*
+changes but its name and type stay valid, so nothing errors and the model quietly rots:
 
-- An upstream team switches a `revenue` column from **dollars → cents**. Same name, same type,
-  no nulls, pipeline green — and the downstream pricing model now thinks everything costs 100× more.
-- `is_active` gets **redefined** ("logged in this month" → "account not deleted"). Same boolean —
-  and the churn model trained on the old meaning is silently invalidated.
-- A missing value gets silently **re-encoded** `NULL → 0`, and the model reads 0 as a real value.
+- A pipeline PR switches a `revenue` column from **dollars → cents**. Same name, same int type,
+  pipeline green — and the downstream pricing model now thinks everything costs 100× more.
+- A `CASE` statement inverts `account_status` (`1 = active` → `1 = deleted`). **Same values, same
+  distribution** — a statistical monitor sees *nothing* — but every model reading it is now backwards.
+- A `COALESCE` silently re-encodes missing values `NULL → 0`, and the model reads 0 as real.
 
-A schema check sees no change. A null check sees no nulls. The model just gets worse, for weeks,
-with **zero alerts**. This class of failure is [documented as unsolved](docs/datahub-environment-findings.md)
-by every major data-quality tool (Monte Carlo, Great Expectations, Soda, Anomalo, Evidently, WhyLabs) —
-all of them are statistics-and-schema shaped and none reasons about a column's *meaning*.
+## The key idea: evidence, not guessing
 
-## What Semantic Guardian does
+Statistical monitors (Monte Carlo, Soda, Evidently, …) can catch some *symptoms* of these — but
+they see numbers move, not *why*, and for a meaning-preserving-distribution change (the inverted
+flag above) they are **blind**. Semantic Guardian is different because it triggers on the **code
+change** and reasons from **causal evidence**:
 
-One reasoning engine — *"understand what every column actually means"* — pointed at the places
-DataHub currently needs a human's judgment.
+> It doesn't guess "the median jumped, maybe the unit changed." It reads the diff — *"this PR added
+> `/ 100` to a column the contract declares is in dollars"* — and reconciles that against DataHub's
+> approved semantics. That's proof, not a hunch, so false positives stay low.
+
+## What it does
 
 ```
-Detect  →  Reason over lineage  →  Validate with human  →  Write back to catalog  →  Heal (fix PR)
+PR / change  →  Extract semantic delta from the diff  →  Reconcile with DataHub context
+             →  Compute ML blast radius  →  Route decision to owner
+             →  Write back + compile a durable contract
 ```
 
-1. **Detect** a semantic shift that passed every existing check (unit/scale, null↔sentinel
-   encoding, categorical remap, currency, meaning drift).
-2. **Reason over lineage** — walk the DataHub graph to find exactly which features, models, and
-   deployments are in the blast radius.
-3. **Validate with a human** — present evidence + reasoning + a proposed fix as a one-click judgment.
-4. **Write back to the catalog** — record the validated finding (tags, glossary, description, and a
-   DataHub incident) so the next person or agent inherits it.
-5. **Heal** — open a scoped, ready-to-merge fix PR against the pipeline repo. A human merges;
-   it never auto-merges to production.
+1. **Trigger on a change** — a dbt/SQL/pipeline PR (or a metadata change) fires the review.
+2. **Extract the semantic delta** from the actual code diff + profile deltas.
+3. **Reconcile with DataHub context** — schema history, glossary, ownership, column-level lineage,
+   and any existing contract. Classify: compatible / breaking / insufficient-context.
+4. **Compute ML blast radius** — which features, models, and deployments are affected, and who owns them.
+5. **Route to a human** — present competing hypotheses + evidence; the owner decides (never silent).
+6. **Write back + compile a contract** — record the decision in DataHub (tag, glossary, incident)
+   **and** compile it into a machine-enforceable assertion/contract. The next time that violation
+   occurs, it's caught **deterministically — without the LLM.**
 
-The same engine also flags **PII/governance** gaps and auto-writes **missing documentation**, and
-ships partly as a reusable **DataHub Skill**.
+Every human validation makes the system rely on the LLM *less*. It turns tacit organizational
+knowledge into executable, durable context.
+
+Scoped to three high-confidence, evidence-backed change classes: **unit/scale**, **null↔sentinel
+encoding**, and **categorical remap**. It ships with a **seeded evaluation benchmark** (precision /
+recall / abstention) and a reusable **DataHub Skill**.
 
 ## Why it uses DataHub meaningfully
 
-Semantic Guardian doesn't just *read* metadata — it **contributes back to the graph**, which is
-what the hackathon judging explicitly rewards. It reads lineage/schema/stats via the DataHub
-**MCP Server** and SDK, and writes tags, glossary terms, descriptions, and incidents back.
+Remove DataHub and the tool stops working: it depends on DataHub for column identity, historical
+context, glossary/contracts, ownership routing, column-level lineage, ML blast radius, incident
+creation, and durable write-back. It doesn't just *read* the graph — it **contributes durable,
+validated context back to it**, which the judging explicitly rewards.
 
 ## Status
 

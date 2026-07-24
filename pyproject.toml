@@ -1,7 +1,7 @@
 [project]
 name = "semantic-guardian"
 version = "0.1.0"
-description = "An AI agent that catches silent semantic data failures using DataHub lineage, validates with a human, writes findings back to the catalog, and opens fix PRs."
+description = "A code reviewer for the meaning of your data: reviews pipeline changes against DataHub's approved semantics, flags breaking semantic changes with evidence from the code diff, computes ML blast radius, and compiles human decisions into durable, enforceable contracts."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
