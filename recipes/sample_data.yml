@@ -1,0 +1,9 @@
+source:
+  type: demo-data
+  config: {}
+
+sink:
+  type: datahub-rest
+  config:
+    server: "http://localhost:8081"
+    token: "${DATAHUB_GMS_TOKEN}"

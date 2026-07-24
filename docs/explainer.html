@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Semantic Guardian — an agent for DataHub</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --ink: #e7e9ee;
+    --muted: #9aa3b2;
+    --line: #2a2f3a;
+    --accent: #6ea8fe;
+    --accent-2: #7ee0c0;
+    --danger: #ff6b6b;
+    --warn: #ffcf6b;
+    --ok: #7ee0c0;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px 100px; }
+  header.hero {
+    padding: 68px 22px 40px;
+    text-align: center;
+    background: radial-gradient(1200px 400px at 50% -120px, rgba(110,168,254,0.18), transparent 70%);
+    border-bottom: 1px solid var(--line);
+  }
+  .badge {
+    display: inline-block; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent); border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 14px; margin-bottom: 20px; background: var(--panel);
+  }
+  h1 { font-size: 40px; line-height: 1.1; margin: 0 0 14px; letter-spacing: -0.02em; }
+  h1 .grad { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--muted); font-size: 19px; max-width: 620px; margin: 0 auto; }
+  h2 { font-size: 27px; margin: 56px 0 8px; letter-spacing: -0.01em; }
+  h2 .n { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 10px; opacity: 0.8; }
+  h3 { font-size: 19px; margin: 30px 0 6px; }
+  p { color: #cfd4dd; }
+  .lead { font-size: 18px; color: var(--ink); }
+  .muted { color: var(--muted); }
+  strong { color: #fff; }
+  code { background: var(--panel-2); padding: 2px 7px; border-radius: 6px; font-size: 0.9em; color: #d9e0ea; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 22px 24px; margin: 18px 0;
+  }
+  .card.tight { padding: 16px 20px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 680px){ .grid2 { grid-template-columns: 1fr; } h1{font-size:32px;} }
+  .pill { display:inline-block; font-size:12px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); background:var(--panel-2); }
+  .flow {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
+    background: var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:20px 14px; margin:16px 0;
+  }
+  .node {
+    background: #212734; border:1px solid var(--line); border-radius:10px; padding:10px 14px;
+    min-width:110px; text-align:center; font-size:13px;
+  }
+  .node .t { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; display:block; margin-bottom:3px; }
+  .node .v { font-weight:600; color:#fff; }
+  .node.broken { border-color: var(--danger); box-shadow: 0 0 0 1px rgba(255,107,107,0.4) inset; }
+  .node.broken .v { color: var(--danger); }
+  .arrow { color: var(--muted); font-size:20px; }
+  .arrow.red { color: var(--danger); }
+  .steps { counter-reset: s; list-style:none; padding:0; margin: 16px 0; }
+  .steps li {
+    position:relative; padding:14px 16px 14px 56px; margin:10px 0;
+    background: var(--panel); border:1px solid var(--line); border-radius:12px;
+  }
+  .steps li::before {
+    counter-increment: s; content: counter(s);
+    position:absolute; left:16px; top:14px; width:26px; height:26px; border-radius:50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color:#0b0e13;
+    font-weight:700; display:flex; align-items:center; justify-content:center; font-size:14px;
+  }
+  .callout { border-left: 3px solid var(--accent); background: var(--panel-2); padding: 14px 18px; border-radius: 0 10px 10px 0; margin: 18px 0; }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.danger { border-left-color: var(--danger); }
+  .quote { font-size:18px; font-style:italic; color:#fff; border-left:3px solid var(--accent-2); padding:6px 0 6px 18px; margin:16px 0; }
+  .quote .src { display:block; font-style:normal; font-size:13px; color:var(--muted); margin-top:6px; }
+  table { width:100%; border-collapse: collapse; margin: 14px 0; font-size: 14.5px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align: top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; }
+  td .no { color: var(--danger); font-weight:600; }
+  td .yes { color: var(--ok); font-weight:600; }
+  .tag { font-size:12px; padding:2px 8px; border-radius:6px; background:var(--panel-2); border:1px solid var(--line); color:var(--muted); }
+  .kpis { display:flex; gap:12px; flex-wrap:wrap; margin:16px 0; }
+  .kpi { flex:1; min-width:130px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; text-align:center; }
+  .kpi .big { font-size:26px; font-weight:700; color:#fff; }
+  .kpi .lbl { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-top:4px; }
+  footer { text-align:center; color:var(--muted); font-size:13px; padding-top:40px; border-top:1px solid var(--line); margin-top:60px; }
+  a { color: var(--accent); }
+  .toc { font-size:14px; color:var(--muted); display:flex; gap:16px; flex-wrap:wrap; justify-content:center; margin-top:24px; }
+  .toc a { text-decoration:none; }
+  .disclaimer { font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="badge">Build with DataHub · Agent Hackathon 2026</div>
+  <h1>Semantic&nbsp;Guardian<br><span class="grad">the meaning-layer for your data</span></h1>
+  <p class="sub">An AI agent that catches the silent data failures every monitoring tool misses — the ones where nothing errors, every check passes, and your ML models quietly rot.</p>
+  <div class="toc">
+    <a href="#what">What is DataHub</a>
+    <a href="#problem">The problem</a>
+    <a href="#idea">The agent</a>
+    <a href="#fix">The fix &amp; PR</a>
+    <a href="#evidence">Why it's novel</a>
+    <a href="#build">What's built</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h2 id="what"><span class="n">01</span>First, what is DataHub?</h2>
+  <p class="lead">Imagine a company with thousands of database tables, dashboards, and machine-learning models. Nobody can track what connects to what. <strong>DataHub is an open-source "catalog" — a Google Maps for a company's data.</strong></p>
+  <p>It answers questions like: what tables exist and what are their columns? Who owns this data? And the killer feature — <strong>lineage</strong>: the family tree showing how data flows from raw tables, into features, into models, into production.</p>
+
+  <div class="flow">
+    <div class="node"><span class="t">Raw data</span><span class="v">orders table</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="t">Feature</span><span class="v">avg_order_value</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="t">Model</span><span class="v">fraud-detector</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="t">Deployment</span><span class="v">live · 2M req/day</span></div>
+  </div>
+  <p class="muted">DataHub stores this entire chain. It's the map. But today, a <em>human</em> still has to read that map and figure out what a change means.</p>
+
+  <h2 id="problem"><span class="n">02</span>The problem: silent failures</h2>
+  <p class="lead">The ML failures that cost the most money are the ones where <strong>everything technically passes</strong> — no error is ever thrown — but the <em>meaning</em> of the data quietly changes.</p>
+
+  <div class="grid2">
+    <div class="card tight">
+      <span class="pill">Unit change</span>
+      <h3 style="margin-top:10px">Dollars → cents</h3>
+      <p class="muted" style="font-size:14.5px">An upstream team switches <code>revenue</code> from dollars to cents to kill rounding errors. Same name. Same type. No nulls. Pipeline green. Your pricing model now thinks everything costs <strong>100× more</strong>.</p>
+    </div>
+    <div class="card tight">
+      <span class="pill">Meaning drift</span>
+      <h3 style="margin-top:10px">Redefined column</h3>
+      <p class="muted" style="font-size:14.5px"><code>is_active</code> used to mean "logged in this month." Now it means "account not deleted." Same boolean. Suddenly 90% of users are "active." Your churn model is silently invalidated.</p>
+    </div>
+  </div>
+
+  <div class="callout danger">
+    <strong>The trap:</strong> a schema check sees no change (same name, same type). A null check sees no nulls. A statistical monitor might not flag a clean 100× shift as "anomalous." The model just gets quietly worse, for weeks, with zero alerts. <strong>Nobody catches it — until the money's gone.</strong>
+  </div>
+
+  <h2 id="idea"><span class="n">03</span>The agent: Semantic Guardian</h2>
+  <p class="lead">One reasoning engine — <strong>"understand what every column actually means"</strong> — pointed at every place DataHub currently needs a human's judgment.</p>
+
+  <p>When something upstream shifts, watch the blast radius ripple through the family tree:</p>
+  <div class="flow">
+    <div class="node broken"><span class="t">Raw data</span><span class="v">💥 revenue $→¢</span></div>
+    <span class="arrow red">→</span>
+    <div class="node broken"><span class="t">Feature</span><span class="v">avg_order_value</span></div>
+    <span class="arrow red">→</span>
+    <div class="node broken"><span class="t">Model</span><span class="v">price-predictor</span></div>
+    <span class="arrow red">→</span>
+    <div class="node broken"><span class="t">Deployment</span><span class="v">🔴 wrong quotes</span></div>
+  </div>
+
+  <p>The agent runs this loop end-to-end:</p>
+  <ol class="steps">
+    <li><strong>Detect</strong> — spots a semantic shift that passed every existing check (a scale jump on the same type, a null-rate collapse, a categorical remap, a currency cue).</li>
+    <li><strong>Reason over lineage</strong> — walks the DataHub graph to find exactly which features, models, and live deployments are affected. This is the "blast radius."</li>
+    <li><strong>Validate with a human</strong> — presents a one-click judgment: the evidence, the reasoning, and a proposed fix. The human confirms in seconds instead of investigating for hours.</li>
+    <li><strong>Write back to the catalog</strong> — records the validated finding (tags, descriptions, glossary, and an incident) <em>into DataHub itself</em>, so the next person or agent inherits the knowledge.</li>
+    <li><strong>Heal</strong> — opens a ready-to-merge fix PR against the pipeline repo. A human clicks merge. It never auto-merges into production.</li>
+  </ol>
+
+  <div class="callout">
+    <strong>The same engine also:</strong> flags un-tagged sensitive data (PII/governance) and auto-writes the missing documentation that leaves most catalogs 60% empty. One brain, three of DataHub's biggest manual bottlenecks.
+  </div>
+
+  <h2 id="fix"><span class="n">3b</span>How the fix &amp; the PR actually work</h2>
+  <p class="lead">"Opens a fix PR" is the part people gloss over, so here's the real mechanism — nothing hand-wavy.</p>
+
+  <h3>What a "PR" is</h3>
+  <p>A <strong>Pull Request (PR)</strong> is the standard way developers propose a code change on GitHub. You don't edit live code directly — you submit a <em>suggested</em> change, and a human reviews it and clicks "merge" to accept. Think of it like a suggested edit in a Google Doc: proposed, not applied, until someone approves.</p>
+
+  <h3>How the agent builds the fix</h3>
+  <p>Once the human confirms the finding is real, the agent generates the correction. Crucially, it doesn't guess — it grounds the fix in what DataHub actually knows:</p>
+  <ol class="steps">
+    <li><strong>Locate the code</strong> — from the lineage, the agent knows which pipeline/transformation file produces the broken column (e.g. the dbt model or Airflow task that builds <code>avg_order_value</code>).</li>
+    <li><strong>Read the real schema first</strong> — it pulls the true, current schema and stats from DataHub via the MCP Server, so the patch matches reality instead of assumptions. (This is the whole "metadata-aware code" idea — read before you write.)</li>
+    <li><strong>Generate a scoped patch</strong> — for the detected class of change. For a dollars→cents shift: divide the column by 100 (or pin the expected unit and assert it). For a null→0 re-encoding: restore the null-handling. The change is small, targeted, and explained.</li>
+    <li><strong>Open the PR</strong> — the agent commits the patch to a new branch and opens a Pull Request on the repo, with a title, a plain-English explanation of what broke and why, and a link back to the DataHub incident it filed.</li>
+    <li><strong>Human reviews &amp; merges</strong> — you read the diff, and click merge (or don't). <strong>The agent never merges to production itself.</strong></li>
+  </ol>
+
+  <div class="flow">
+    <div class="node broken"><span class="t">1 · Detected</span><span class="v">$→¢ shift</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="t">2 · Human OK</span><span class="v">one click</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="t">3 · Agent</span><span class="v">writes patch</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="t">4 · GitHub</span><span class="v">PR opened</span></div>
+    <span class="arrow">→</span>
+    <div class="node" style="border-color:var(--ok)"><span class="t">5 · You</span><span class="v" style="color:var(--ok)">merge ✓</span></div>
+  </div>
+
+  <div class="callout warn">
+    <strong>Why not auto-merge?</strong> Because no serious data team lets a bot push code straight to production — and pretending otherwise would scare a judge, not impress one. The value is that the agent does the ~95% of grunt work (find it, diagnose it, write the fix, explain it) and hands a human a clean, reviewed diff. That's "human-in-the-loop," and it's a feature, not a limitation.
+  </div>
+
+  <h2 id="evidence"><span class="n">04</span>Why this is genuinely novel</h2>
+  <p class="lead">This isn't a hunch. We validated it two ways: against DataHub's own product documentation, and against every major data-quality and ML-monitoring tool on the market today.</p>
+
+  <h3>No existing tool does this</h3>
+  <p class="muted">Every data-quality and ML-monitoring tool is statistics-and-schema shaped. None reasons about a column's <em>meaning</em> changing while its name and type stay valid.</p>
+  <table>
+    <tr><th>Tool</th><th>What it does</th><th>Catches meaning/unit change?</th></tr>
+    <tr><td>Monte Carlo</td><td>Freshness, volume, schema, statistical anomalies</td><td><span class="no">No</span></td></tr>
+    <tr><td>Great Expectations</td><td>Declarative schema / value assertions</td><td><span class="no">No</span></td></tr>
+    <tr><td>Soda · Anomalo</td><td>Rule + ML statistical anomaly detection</td><td><span class="no">No</span></td></tr>
+    <tr><td>Evidently · WhyLabs</td><td>Statistical distribution drift for ML</td><td><span class="no">No</span></td></tr>
+    <tr><td><strong>Semantic Guardian</strong></td><td>LLM reasoning over meaning + stats + lineage + code</td><td><span class="yes">Yes</span></td></tr>
+  </table>
+
+  <h3>DataHub says this out loud</h3>
+  <p class="muted">From DataHub's own blog, published the week the hackathon launched:</p>
+  <blockquote class="quote">
+    "Auto-generation captures how data has been used, not how it should be used… Without a human validation layer, agents retrieve the most popular context, not the most correct context."
+    <span class="src">— DataHub blog, "AI Agents & Human-Validated Context" (July 2026)</span>
+  </blockquote>
+  <p>In other words: DataHub is a <strong>metadata store with no reasoning layer</strong>. It stores the ingredients — lineage, stats, schema history — but validating what data <em>should</em> mean is manual human work today. <strong>Semantic Guardian is that missing validation layer.</strong> We're not rebuilding DataHub; we're building the brain it was designed to host.</p>
+
+  <h2 id="build"><span class="n">05</span>Status — already running</h2>
+  <div class="kpis">
+    <div class="kpi"><div class="big">✓</div><div class="lbl">DataHub live locally</div></div>
+    <div class="kpi"><div class="big">7</div><div class="lbl">datasets loaded</div></div>
+    <div class="kpi"><div class="big">20</div><div class="lbl">ML features</div></div>
+    <div class="kpi"><div class="big">✓</div><div class="lbl">lineage graph walkable</div></div>
+  </div>
+  <p class="muted">DataHub is running with real sample data, and we've confirmed the lineage graph is queryable end-to-end (a raw table traces through to its ML features). The agent will ship partly as a reusable <strong>DataHub Skill</strong> — an open-source contribution that both scores hackathon bonus points and is exactly the kind of work DataHub recognizes its community contributors for.</p>
+
+  <div class="callout warn">
+    <strong>Honest scope:</strong> semantic detection is targeted at <em>detectable classes</em> — unit/scale shifts, null↔sentinel encoding, categorical remaps, currency — not a magic "detects any meaning change" claim. And it's a human-in-the-loop assistant, not an autonomous system that pushes to production on its own.
+  </div>
+
+  <footer>
+    Semantic Guardian · built for the Build with DataHub Agent Hackathon 2026<br>
+    <span class="disclaimer">Prepared as an explainer. Sources: docs.datahub.com · datahub.com/blog · datahub.devpost.com · vendor documentation.</span>
+  </footer>
+
+</div>
+</body>
+</html>
