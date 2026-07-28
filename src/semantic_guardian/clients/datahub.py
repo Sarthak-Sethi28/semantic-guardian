@@ -18,7 +18,7 @@ from semantic_guardian.models import (
 )
 
 try:  # SDK import isolated so tests can patch it and non-DataHub layers never import it
-    from datahub.ingestion.graph.client import DataHubGraph, DatahubClientConfig
+    from datahub.ingestion.graph.client import DatahubClientConfig, DataHubGraph
 except Exception:  # pragma: no cover - only hit if SDK missing
     DataHubGraph = None
     DatahubClientConfig = None
@@ -70,7 +70,12 @@ class DataHubClient:
             )
             for f in schema.fields
         }
-        return Dataset(urn=urn, name=_name_from_urn(urn), platform=_platform_from_urn(urn), fields=fields)
+        return Dataset(
+            urn=urn,
+            name=_name_from_urn(urn),
+            platform=_platform_from_urn(urn),
+            fields=fields,
+        )
 
     def get_schema_fields(self, urn: str) -> list[SchemaField]:
         return list(self.get_dataset(urn).fields.values())
@@ -86,20 +91,30 @@ class DataHubClient:
             for o in own.owners
         ]
 
-    def get_related(self, urn: str, types: list[str], direction: str = "INCOMING") -> list[RelatedEntity]:
+    def get_related(
+        self, urn: str, types: list[str], direction: str = "INCOMING"
+    ) -> list[RelatedEntity]:
         # `types` must be non-null [String!]! and `direction` is an enum literal in the live
         # GMS schema, so we inline them into the input object rather than pass loose variables.
         types_literal = "[" + ",".join(f'"{t}"' for t in types) + "]"
+        rel_input = f"types:{types_literal},direction:{direction},count:100"
         query = f"""
         query($urn:String!){{
-          entity(urn:$urn){{ relationships(input:{{types:{types_literal},direction:{direction},count:100}}){{
+          entity(urn:$urn){{ relationships(input:{{{rel_input}}}){{
             relationships{{ type entity{{ urn type }} }} }} }}
         }}"""
         try:
             res = self._graph.execute_graphql(query, variables={"urn": urn})
         except Exception as exc:
-            raise DataHubUnavailable(f"GraphQL relationships failed for {urn}: {exc}") from exc
-        rels = (((res or {}).get("entity") or {}).get("relationships") or {}).get("relationships") or []
+            raise DataHubUnavailable(
+                f"GraphQL relationships failed for {urn}: {exc}"
+            ) from exc
+        rels = (
+            (((res or {}).get("entity") or {}).get("relationships") or {}).get(
+                "relationships"
+            )
+            or []
+        )
         return [
             RelatedEntity(
                 urn=r["entity"]["urn"],
@@ -122,11 +137,19 @@ class DataHubClient:
             res = self._graph.execute_graphql(query, variables={"urn": urn})
         except Exception:
             return []
-        items = ((((res or {}).get("entity") or {}).get("assertions") or {}).get("assertions")) or []
+        items = (
+            (((res or {}).get("entity") or {}).get("assertions") or {}).get("assertions")
+        ) or []
         out: list[Contract] = []
         for a in items:
             info = a.get("info") or {}
-            out.append(Contract(urn=a.get("urn", ""), description=info.get("description"), kind=info.get("type")))
+            out.append(
+                Contract(
+                    urn=a.get("urn", ""),
+                    description=info.get("description"),
+                    kind=info.get("type"),
+                )
+            )
         return out
 
     def get_profile(self, urn: str):  # noqa: ARG002 - deferred non-goal, stubbed

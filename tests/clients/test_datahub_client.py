@@ -53,10 +53,14 @@ def test_get_downstream_ml_filters_to_ml_entities():
         "entity": {
             "relationships": {
                 "relationships": [
-                    {"type": "DerivedFrom", "entity": {"urn": "urn:li:mlFeature:(t,is_premium)", "type": "MLFEATURE"}},
-                    {"type": "DerivedFrom", "entity": {"urn": "urn:li:mlPrimaryKey:(t,user_id)", "type": "MLPRIMARYKEY"}},
-                    {"type": "DownstreamOf", "entity": {"urn": "urn:li:dataset:(x,fct_users_deleted,PROD)", "type": "DATASET"}},
-                    {"type": "Produces", "entity": {"urn": "urn:li:dataJob:(x,task_123)", "type": "DATA_JOB"}},
+                    {"type": "DerivedFrom",
+                     "entity": {"urn": "urn:li:mlFeature:(t,is_premium)", "type": "MLFEATURE"}},
+                    {"type": "DerivedFrom",
+                     "entity": {"urn": "urn:li:mlPrimaryKey:(t,user_id)", "type": "MLPRIMARYKEY"}},
+                    {"type": "DownstreamOf",
+                     "entity": {"urn": "urn:li:dataset:(x,fct_del,PROD)", "type": "DATASET"}},
+                    {"type": "Produces",
+                     "entity": {"urn": "urn:li:dataJob:(x,task_123)", "type": "DATA_JOB"}},
                 ]
             }
         }
@@ -73,7 +77,9 @@ def test_get_downstream_ml_filters_to_ml_entities():
 def test_get_owners():
     graph = MagicMock()
     own = MagicMock()
-    o1 = MagicMock(); o1.owner = "urn:li:corpuser:jdoe"; o1.type = "DATAOWNER"
+    o1 = MagicMock()
+    o1.owner = "urn:li:corpuser:jdoe"
+    o1.type = "DATAOWNER"
     own.owners = [o1]
     graph.get_aspect.return_value = own
     client = _make_client(graph)
@@ -96,6 +102,7 @@ def test_health_false_when_graph_raises():
 
 
 def test_connect_failure_raises_datahub_unavailable():
-    with patch("semantic_guardian.clients.datahub.DataHubGraph", side_effect=RuntimeError("no gms")):
+    boom = RuntimeError("no gms")
+    with patch("semantic_guardian.clients.datahub.DataHubGraph", side_effect=boom):
         with pytest.raises(DataHubUnavailable):
             DataHubClient(gms_url="http://x:8081", token=None)
