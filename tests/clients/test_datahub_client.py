@@ -15,6 +15,7 @@ def _field(path, native, desc):
     f.fieldPath = path
     f.nativeDataType = native
     f.description = desc
+    f.glossaryTerms = None  # default: no field-level terms (tests opt in explicitly)
     return f
 
 
@@ -85,6 +86,32 @@ def test_get_owners():
     client = _make_client(graph)
     owners = client.get_owners(DS_URN)
     assert owners[0].username == "jdoe"
+
+
+def test_get_glossary_terms_dataset_level():
+    graph = MagicMock()
+    gt = MagicMock()
+    t = MagicMock()
+    t.urn = "urn:li:glossaryTerm:Classification.Confidential"
+    gt.terms = [t]
+    graph.get_aspect.return_value = gt
+    client = _make_client(graph)
+    terms = client.get_glossary_terms(DS_URN)
+    assert terms[0].name == "Confidential"
+
+
+def test_get_dataset_maps_field_level_glossary_terms():
+    graph = MagicMock()
+    schema = MagicMock()
+    fld = _field("revenue", "int", "Revenue in dollars")
+    term = MagicMock()
+    term.urn = "urn:li:glossaryTerm:Money"
+    fld.glossaryTerms = MagicMock(terms=[term])
+    schema.fields = [fld]
+    graph.get_aspect.return_value = schema
+    client = _make_client(graph)
+    ds = client.get_dataset(DS_URN)
+    assert ds.fields["revenue"].glossary_terms[0].name == "Money"
 
 
 def test_get_contracts_empty_returns_list_not_error():

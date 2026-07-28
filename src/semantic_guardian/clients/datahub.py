@@ -8,10 +8,13 @@ Write-back (tags, glossary, incidents) is intentionally not here; see #8/#9.
 """
 from __future__ import annotations
 
+from typing import Any
+
 from semantic_guardian.config import resolve_datahub_config
 from semantic_guardian.models import (
     Contract,
     Dataset,
+    GlossaryTerm,
     Owner,
     RelatedEntity,
     SchemaField,
@@ -20,8 +23,8 @@ from semantic_guardian.models import (
 try:  # SDK import isolated so tests can patch it and non-DataHub layers never import it
     from datahub.ingestion.graph.client import DatahubClientConfig, DataHubGraph
 except Exception:  # pragma: no cover - only hit if SDK missing
-    DataHubGraph = None
-    DatahubClientConfig = None
+    DataHubGraph: Any = None  # type: ignore[no-redef]
+    DatahubClientConfig: Any = None  # type: ignore[no-redef]
 
 # Relationship + entity-type constants (verified against live GMS).
 _ML_ENTITY_MARKERS = ("mlFeature", "mlPrimaryKey", "mlModel")
@@ -67,6 +70,7 @@ class DataHubClient:
                 field_path=f.fieldPath,
                 native_type=getattr(f, "nativeDataType", None),
                 description=getattr(f, "description", None),
+                glossary_terms=_field_terms(f),
             )
             for f in schema.fields
         }
@@ -79,6 +83,16 @@ class DataHubClient:
 
     def get_schema_fields(self, urn: str) -> list[SchemaField]:
         return list(self.get_dataset(urn).fields.values())
+
+    def get_glossary_terms(self, urn: str) -> list[GlossaryTerm]:
+        """Dataset-level glossary terms ([] if none). Field-level terms are on each
+        SchemaField via get_dataset (D7)."""
+        from datahub.metadata.schema_classes import GlossaryTermsClass
+
+        gt = self._graph.get_aspect(urn, GlossaryTermsClass)
+        if gt is None:
+            return []
+        return [GlossaryTerm(urn=t.urn, name=_term_name(t.urn)) for t in gt.terms]
 
     def get_owners(self, urn: str) -> list[Owner]:
         from datahub.metadata.schema_classes import OwnershipClass
@@ -162,6 +176,19 @@ class DataHubClient:
             return True
         except Exception:
             return False
+
+
+def _term_name(term_urn: str) -> str:
+    # urn:li:glossaryTerm:Classification.Confidential -> Confidential
+    return term_urn.split(":")[-1].split(".")[-1]
+
+
+def _field_terms(field) -> list[GlossaryTerm]:  # noqa: ANN001 - SDK field object
+    """Extract field-level glossary terms from a SchemaField aspect, [] if none."""
+    gt = getattr(field, "glossaryTerms", None)
+    if not gt or not getattr(gt, "terms", None):
+        return []
+    return [GlossaryTerm(urn=t.urn, name=_term_name(t.urn)) for t in gt.terms]
 
 
 def _name_from_urn(urn: str) -> str:

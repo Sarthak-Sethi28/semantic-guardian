@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
 DEFAULT_GMS_URL = "http://localhost:8081"
