@@ -1,0 +1,11 @@
+diff --git a/models/fct_revenue.sql b/models/fct_revenue.sql
+index 1111111..3333333 100644
+--- a/models/fct_revenue.sql
++++ b/models/fct_revenue.sql
+@@ -1,5 +1,6 @@
+ -- fct_revenue: per-order revenue fact.
+ -- CONTRACT: `revenue` is in USD dollars (not cents). See DataHub glossary term Money.USD_Dollars.
++-- Reviewed 2026-07: column set unchanged; see revenue-forecast feature owner.
+ select
+     order_id,
+     customer_id,
