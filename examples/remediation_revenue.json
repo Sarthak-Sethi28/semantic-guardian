@@ -1,0 +1,8 @@
+{
+  "field_path": "revenue",
+  "change_class": "unit_scale",
+  "original_before": "revenue",
+  "broken_after": "revenue / 100 as revenue",
+  "suggested_after": "revenue * 100 as revenue",
+  "rationale": "The change divided `revenue` by 100, altering its unit. Multiplying back by 100 restores the declared scale."
+}

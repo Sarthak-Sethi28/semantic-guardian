@@ -1,0 +1,16 @@
+{
+  "field_path": "account_status",
+  "classification": "breaking",
+  "change_class": "categorical_remap",
+  "explanation": "The CASE statement inverts the encoding: original value 1 becomes 0 and original value 0 becomes 1. This directly contradicts the catalog meaning where 1 = active and 0 = deleted, flipping the semantic interpretation of every value.",
+  "hypotheses": [
+    "The transformation inverts the boolean encoding, making 0 = active and 1 = deleted, breaking the declared meaning",
+    "This could be an intentional fix if the catalog description was previously incorrect, but the change still breaks the currently declared meaning"
+  ],
+  "confidence": {
+    "code": 1.0,
+    "stats": 1.0,
+    "catalog": 1.0,
+    "precedent": 1.0
+  }
+}
