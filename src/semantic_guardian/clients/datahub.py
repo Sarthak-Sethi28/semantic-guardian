@@ -60,20 +60,37 @@ class DataHubClient:
     # ── reads ────────────────────────────────────────────────────────────────
 
     def get_dataset(self, urn: str) -> Dataset:
-        from datahub.metadata.schema_classes import SchemaMetadataClass
+        from datahub.metadata.schema_classes import (
+            EditableSchemaMetadataClass,
+            SchemaMetadataClass,
+        )
 
         schema = self._graph.get_aspect(urn, SchemaMetadataClass)
         if schema is None:
             raise EntityNotFound(f"No schema for {urn}")
-        fields = {
-            f.fieldPath: SchemaField(
+
+        # Field-level glossary terms / descriptions edited via the DataHub UI land in
+        # editableSchemaMetadata, NOT schemaMetadata. Merge both so a term set either way
+        # is visible (review finding #4).
+        editable = self._graph.get_aspect(urn, EditableSchemaMetadataClass)
+        editable_by_path = {}
+        if editable is not None:
+            editable_by_path = {e.fieldPath: e for e in editable.editableSchemaFieldInfo}
+
+        fields = {}
+        for f in schema.fields:
+            terms = _field_terms(f)
+            desc = getattr(f, "description", None)
+            ed = editable_by_path.get(f.fieldPath)
+            if ed is not None:
+                terms = terms or _field_terms(ed)  # editable overrides when schema has none
+                desc = desc or getattr(ed, "description", None)
+            fields[f.fieldPath] = SchemaField(
                 field_path=f.fieldPath,
                 native_type=getattr(f, "nativeDataType", None),
-                description=getattr(f, "description", None),
-                glossary_terms=_field_terms(f),
+                description=desc,
+                glossary_terms=terms,
             )
-            for f in schema.fields
-        }
         return Dataset(
             urn=urn,
             name=_name_from_urn(urn),
@@ -110,6 +127,8 @@ class DataHubClient:
     ) -> list[RelatedEntity]:
         # `types` must be non-null [String!]! and `direction` is an enum literal in the live
         # GMS schema, so we inline them into the input object rather than pass loose variables.
+        if direction not in ("INCOMING", "OUTGOING", "UNDIRECTED"):
+            raise ValueError(f"direction must be INCOMING/OUTGOING/UNDIRECTED, got {direction!r}")
         types_literal = "[" + ",".join(f'"{t}"' for t in types) + "]"
         rel_input = f"types:{types_literal},direction:{direction},count:100"
         query = f"""
@@ -156,6 +175,8 @@ class DataHubClient:
         ) or []
         out: list[Contract] = []
         for a in items:
+            if not isinstance(a, dict):  # D8: never raise on an unexpected shape
+                continue
             info = a.get("info") or {}
             out.append(
                 Contract(

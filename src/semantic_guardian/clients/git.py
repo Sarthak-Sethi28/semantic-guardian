@@ -39,7 +39,10 @@ class GitClient:
         headers = {"Accept": _GITHUB_DIFF_ACCEPT}
         if self._token:
             headers["Authorization"] = f"Bearer {self._token}"
-        resp = httpx.get(url, headers=headers, timeout=30.0, follow_redirects=True)
+        try:
+            resp = httpx.get(url, headers=headers, timeout=30.0, follow_redirects=True)
+        except httpx.HTTPError as exc:  # connect/timeout/read — not just non-200
+            raise GitDiffError(f"GitHub fetch failed for {repo}#{pr_number}: {exc}") from exc
         if resp.status_code != 200:
             raise GitDiffError(
                 f"GitHub returned {resp.status_code} for {repo}#{pr_number}: {resp.text[:200]}"

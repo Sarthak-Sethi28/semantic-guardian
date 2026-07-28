@@ -24,6 +24,21 @@ def _make_client(graph):
         return DataHubClient(gms_url="http://x:8081", token=None)
 
 
+def _aspect_router(schema=None, ownership=None, editable=None, glossary=None):
+    """get_aspect side_effect keyed by aspect class name (get_dataset reads 2 aspects)."""
+
+    def _side(urn, aspect_type):
+        name = aspect_type.__name__
+        return {
+            "SchemaMetadataClass": schema,
+            "EditableSchemaMetadataClass": editable,
+            "OwnershipClass": ownership,
+            "GlossaryTermsClass": glossary,
+        }.get(name)
+
+    return _side
+
+
 def test_get_dataset_maps_fields_keyed_by_path():
     graph = MagicMock()
     schema = MagicMock()
@@ -31,7 +46,7 @@ def test_get_dataset_maps_fields_keyed_by_path():
         _field("revenue", "int", "Revenue in dollars"),
         _field("user_id", "varchar(100)", "Id of user"),
     ]
-    graph.get_aspect.return_value = schema
+    graph.get_aspect.side_effect = _aspect_router(schema=schema, editable=None)
     client = _make_client(graph)
 
     ds = client.get_dataset(DS_URN)
@@ -108,10 +123,30 @@ def test_get_dataset_maps_field_level_glossary_terms():
     term.urn = "urn:li:glossaryTerm:Money"
     fld.glossaryTerms = MagicMock(terms=[term])
     schema.fields = [fld]
-    graph.get_aspect.return_value = schema
+    graph.get_aspect.side_effect = _aspect_router(schema=schema, editable=None)
     client = _make_client(graph)
     ds = client.get_dataset(DS_URN)
     assert ds.fields["revenue"].glossary_terms[0].name == "Money"
+
+
+def test_get_dataset_merges_editable_schema_terms():
+    # Review finding #4: terms set via the UI live in editableSchemaMetadata, not schemaMetadata.
+    graph = MagicMock()
+    schema = MagicMock()
+    schema.fields = [_field("revenue", "int", None)]  # no term/desc on schemaMetadata
+    editable = MagicMock()
+    ed_field = MagicMock()
+    ed_field.fieldPath = "revenue"
+    ed_field.description = "Revenue in USD dollars"
+    term = MagicMock()
+    term.urn = "urn:li:glossaryTerm:Money.USD_Dollars"
+    ed_field.glossaryTerms = MagicMock(terms=[term])
+    editable.editableSchemaFieldInfo = [ed_field]
+    graph.get_aspect.side_effect = _aspect_router(schema=schema, editable=editable)
+    client = _make_client(graph)
+    rev = client.get_dataset(DS_URN).fields["revenue"]
+    assert rev.description == "Revenue in USD dollars"
+    assert rev.glossary_terms[0].name == "USD_Dollars"
 
 
 def test_get_contracts_empty_returns_list_not_error():
@@ -119,6 +154,39 @@ def test_get_contracts_empty_returns_list_not_error():
     graph.execute_graphql.return_value = {"entity": {"assertions": {"assertions": []}}}
     client = _make_client(graph)
     assert client.get_contracts(DS_URN) == []
+
+
+def test_get_contracts_maps_populated_assertions():
+    graph = MagicMock()
+    graph.execute_graphql.return_value = {
+        "entity": {
+            "assertions": {
+                "assertions": [
+                    {"urn": "urn:li:assertion:a1",
+                     "info": {"description": "revenue is USD dollars", "type": "DATASET"}},
+                ]
+            }
+        }
+    }
+    client = _make_client(graph)
+    contracts = client.get_contracts(DS_URN)
+    assert contracts[0].urn == "urn:li:assertion:a1"
+    assert contracts[0].description == "revenue is USD dollars"
+    assert contracts[0].kind == "DATASET"
+
+
+def test_get_contracts_never_raises_on_graphql_error():
+    graph = MagicMock()
+    graph.execute_graphql.side_effect = RuntimeError("boom")
+    client = _make_client(graph)
+    assert client.get_contracts(DS_URN) == []  # D8: best-effort, never raises
+
+
+def test_get_related_rejects_bad_direction():
+    graph = MagicMock()
+    client = _make_client(graph)
+    with pytest.raises(ValueError, match="direction"):
+        client.get_related(DS_URN, ["DerivedFrom"], "sideways")
 
 
 def test_health_false_when_graph_raises():
