@@ -2,6 +2,7 @@
 
 Thin CLI shell for now; commands are wired up per-issue as modules land.
 """
+
 from __future__ import annotations
 
 import typer
@@ -77,6 +78,52 @@ def review(
         if d.column.description:
             console.print(f"      declared: [dim]{d.column.description}[/]")
     console.print("\n[dim]Next: the semantic-delta engine (#5) reasons over this event.[/]")
+
+
+@app.command()
+def benchmark(
+    offline: bool = typer.Option(
+        False, "--offline", help="Score only deterministic stages without a model (no key needed)"
+    ),
+) -> None:
+    """Run the seeded eval suite and print a metrics table (#17).
+
+    Honest framing: this is a SEEDED suite of hand-labeled cases, not production numbers.
+    Uses a real reasoner (Bedrock/Anthropic) unless --offline, which scores an abstaining
+    baseline so the harness is demonstrable with no key.
+    """
+    from .benchmark import run_benchmark
+
+    if offline:
+
+        class _Abstain:
+            def reason(self, prompt: str) -> str:
+                return '{"classification":"insufficient-context","change_class":"unknown"}'
+
+        reasoner = _Abstain()
+        console.print("[yellow]Offline mode:[/] engine not invoked; showing abstaining baseline.")
+    else:
+        from .reasoners import get_reasoner
+
+        try:
+            reasoner = get_reasoner()
+        except Exception as exc:
+            console.print(
+                f"[red]No model available:[/] {exc}\nRun with --offline for the harness baseline."
+            )
+            raise typer.Exit(1) from exc
+
+    m = run_benchmark(reasoner)
+    console.print(
+        f"\n[bold]Seeded benchmark — {m.total} hand-labeled cases[/] [dim](not production scale)[/]"
+    )
+    console.print(f"  accuracy     {m.accuracy:.0%}  ({m.correct}/{m.total})")
+    console.print(
+        f"  precision    {m.precision:.0%}  [dim](of predicted-breaking, truly breaking)[/]"
+    )
+    console.print(f"  recall       {m.recall:.0%}  [dim](of truly-breaking, caught)[/]")
+    console.print(f"  abstained    {m.abstained}   [dim](ambiguous cases correctly deferred)[/]")
+    console.print(f"  false alarms {m.false_positives}   ·  missed breaks {m.missed}")
 
 
 @app.command()
