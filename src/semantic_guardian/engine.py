@@ -83,13 +83,31 @@ CODE CHANGE (unified-diff evidence):
 Classify the change and respond with the JSON object only."""
 
 
+def _extract_json(raw: str) -> str:
+    """Pull the JSON object out of a model response. Models commonly wrap JSON in
+    ```json fences or add prose; we strip fences and take the outermost {...}."""
+    if not raw:
+        return "{}"
+    text = raw.strip()
+    # strip a leading ```json / ``` fence and trailing ```
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else text
+        if text.rstrip().endswith("```"):
+            text = text.rstrip()[:-3]
+    # take the outermost object if there's surrounding prose
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return text[start : end + 1]
+    return text
+
+
 def reason_about_change(reasoner: LLMReasoner, delta: ColumnDelta) -> Finding:
     """Ask the reasoner to classify one column change. Malformed output -> abstain (never
     fabricate a verdict, never crash)."""
     prompt = build_prompt(delta)
     try:
         raw = reasoner.reason(prompt)
-        data = json.loads(raw)
+        data = json.loads(_extract_json(raw))
         if not isinstance(data, dict):
             raise ValueError("not an object")
     except Exception:

@@ -50,8 +50,15 @@ def main() -> int:
     sigs = detect(before, after)
     print(f"2 ANOMALY  : investigate={should_investigate(sigs)} ({sigs[0].kind if sigs else '-'})")
 
-    finding = reason_about_change(_StubReasoner(), req.deltas[0])
+    # Use the real model if a provider is configured, else the stub (offline demo).
+    try:
+        from semantic_guardian.reasoners import get_reasoner
+        reasoner = get_reasoner()
+    except Exception:
+        reasoner = _StubReasoner()
+    finding = reason_about_change(reasoner, req.deltas[0])
     print(f"3 ENGINE   : {finding.classification} / {finding.change_class}")
+    print(f"           : {finding.explanation[:110]}")
 
     br = blast_radius(client, URN)
     print(f"4 BLAST    : severity {br.severity}, impacted {sum(br.counts.values())}")

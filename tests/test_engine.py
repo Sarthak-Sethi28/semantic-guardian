@@ -84,6 +84,18 @@ def test_engine_abstains_on_low_evidence():
     assert finding.abstained is True
 
 
+def test_engine_strips_markdown_fences_from_llm_json():
+    """Real models (e.g. Claude) wrap JSON in ```json fences — the engine must still parse it."""
+    class FencedReasoner:
+        def reason(self, prompt):
+            return ('```json\n{"classification": "breaking", "change_class": "unit_scale", '
+                    '"explanation": "divides revenue by 100", "hypotheses": ["x"], '
+                    '"confidence": {"code": 0.9}}\n```')
+    finding = reason_about_change(FencedReasoner(), _delta())
+    assert finding.classification == "breaking"
+    assert finding.change_class == "unit_scale"
+
+
 def test_engine_handles_bad_llm_json_as_abstain():
     class BadReasoner:
         def reason(self, prompt): return "this is not json"
