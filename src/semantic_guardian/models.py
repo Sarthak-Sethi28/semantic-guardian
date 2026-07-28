@@ -60,3 +60,36 @@ class FileChange(BaseModel):
 class PRDiff(BaseModel):
     files: list[FileChange] = Field(default_factory=list)
     raw: str | None = None
+
+
+# ── signal extractor (#4) ────────────────────────────────────────────────────
+
+
+class ColumnSnapshot(BaseModel):
+    """A column's DataHub-declared semantics (the contract side)."""
+
+    field_path: str
+    declared_type: str | None = None
+    description: str | None = None
+    glossary_terms: list[GlossaryTerm] = Field(default_factory=list)
+    # optional profile signal — absent in sample data, structured for later
+    null_rate: float | None = None
+    cardinality: int | None = None
+    samples: list[str] = Field(default_factory=list)
+
+
+class ChangeSnapshot(BaseModel):
+    """What the diff did to a column (the change side)."""
+
+    field_path: str
+    before_expr: str | None = None
+    after_expr: str | None = None
+    # heuristic hint, NOT the verdict — #5 decides.
+    change_kind: str = "other"  # unit_scale | null_sentinel | categorical_remap | other | none
+
+
+class ColumnDelta(BaseModel):
+    """Fused evidence for one changed column: declared meaning + what changed."""
+
+    column: ColumnSnapshot
+    change: ChangeSnapshot
