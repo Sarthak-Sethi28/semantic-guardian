@@ -80,6 +80,44 @@ def review(
     console.print("\n[dim]Next: the semantic-delta engine (#5) reasons over this event.[/]")
 
 
+@app.command(name="review-comment")
+def review_comment(
+    urn: str = typer.Argument(..., help="Dataset URN the change targets"),
+    diff: str = typer.Option(None, "--diff", help="Path to a local unified diff file"),
+    pr: int = typer.Option(None, "--pr", help="GitHub PR number (repo via --repo)"),
+    repo: str = typer.Option(None, "--repo", help="owner/name for --pr"),
+) -> None:
+    """Run the full review and print the GitHub-native review comment (#13).
+
+    This is the review surface: it runs trigger -> reason -> blast radius and renders the
+    Markdown comment an agent would post on the PR. Needs a model configured (see reasoners).
+    """
+    from .clients.datahub import DataHubClient, DataHubError
+    from .clients.git import GitClient, GitDiffError
+    from .review_ui import render_review
+    from .skill import review_change
+
+    if not diff and pr is None:
+        console.print("[red]Provide --diff <file> or --pr <n> (with --repo).[/]")
+        raise typer.Exit(2)
+    try:
+        gc = GitClient()
+        prdiff = gc.get_local_diff(diff) if diff else gc.get_pr_diff(repo, pr)
+        from .reasoners import get_reasoner
+        reasoner = get_reasoner()
+        result = review_change(DataHubClient(), urn, prdiff, reasoner=reasoner,
+                               event=("local" if diff else f"pr:{pr}"))
+    except (GitDiffError, DataHubError) as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from exc
+    except Exception as exc:
+        console.print(f"[red]No model available:[/] {exc}")
+        raise typer.Exit(1) from exc
+
+    # print the raw markdown so it can be piped straight into a PR comment
+    print(render_review(result))
+
+
 @app.command()
 def benchmark(
     offline: bool = typer.Option(
