@@ -7,4 +7,5 @@
 - **hero.html** — the animated hero, rendered and screen-captured.
 - **audio/** — voiceover track per segment.
 
-The video is built by `scripts/assemble_final.py`.
+The video is built by `demo/tooling/assemble_final.py` (presentation tooling — not part of the
+agent; the product code lives in `src/` and `scripts/`).

@@ -118,14 +118,35 @@ engine.
 
 ## Why it's an agent, not a lookup table
 
-- **Nothing is hardcoded.** The anomaly layer's thresholds are derived from each column's own
-  historical baseline (a test asserts two columns flag at *different* absolute deltas). The engine is
-  never handed the heuristic's guess — it reasons from the raw diff + contract and generalizes to
-  changes we never seeded.
-- **Abstention is a feature.** Weak or ambiguous evidence → `insufficient-context`, silently. It
-  doesn't cry wolf.
+This is the fair question to ask of any "AI" project, so here is the evidence — each point is
+checkable in the code, not just asserted:
+
+- **The model is never told the answer.** `build_prompt()` sends the LLM only the column, its
+  declared meaning/glossary, and the raw before/after diff — then asks it to classify. The
+  extractor's own heuristic `change_kind` guess is *deliberately withheld* so the model can't
+  rubber-stamp it. See [`engine.py` `build_prompt`](src/semantic_guardian/engine.py) (lines ~66–83)
+  and its comment: *"Carries the diff + declared meaning ONLY — never the extractor's heuristic."*
+- **Thresholds are data-derived, and a test proves it.** The anomaly layer flags a shift relative to
+  each column's *own* baseline spread, never a magic number. The test
+  `test_scale_threshold_is_data_derived_not_hardcoded` feeds two columns the **same absolute delta**
+  but different baseline variance and asserts they get **different verdicts** — impossible if a
+  constant were hardcoded. (`tests/test_anomaly.py`)
+- **It generalizes past the seed.** The engine reasons from evidence, so it classifies change shapes
+  that were never in the benchmark; and it has a genuine **blind spot the stats layer cannot see**
+  (the inverted boolean), which only the reasoning stage catches — a test asserts the stats layer
+  stays silent on it.
+- **Abstention is a feature.** Weak or ambiguous evidence → `insufficient-context`, silently; malformed
+  model output → abstain, never fabricate a verdict, never crash. It doesn't cry wolf.
 - **It contributes back to DataHub.** Validated findings become tags, incidents, and a durable
   assertion on the graph — knowledge that outlives the chat and is caught without the LLM next time.
+
+**Verify it yourself in 30 seconds** (no API key needed):
+
+```bash
+pip install -e ".[dev]"
+python -m pytest tests/test_anomaly.py -k data_derived -v   # the "not hardcoded" proof
+python -m pytest -q                                         # full suite, fully offline
+```
 
 ## Measured result (seeded)
 
