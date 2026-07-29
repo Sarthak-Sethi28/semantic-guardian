@@ -17,6 +17,19 @@ breakage is caught deterministically next time.
 
 ---
 
+## Demo
+
+https://github.com/Sarthak-Sethi28/semantic-guardian/raw/main/demo/semantic_guardian_final.mp4
+
+> A ~100s walkthrough: an inverted boolean that every statistical monitor is blind to → the agent
+> reasons from the code + contract → the two-stage cost-aware filter → the durable semantic contracts
+> it writes back into DataHub → the downstream ML blast radius → and the same break caught again with
+> the LLM switched off.
+
+## Architecture
+
+![Semantic Guardian architecture](demo/architecture.png)
+
 ## The problem
 
 The ML failures that cost the most money are silent semantic changes — where a column's *meaning*

@@ -24,10 +24,14 @@ class BedrockReasoner:
                  profile: str | None = None) -> None:
         import boto3  # type: ignore[import-untyped]
 
-        self.model_id = model_id or os.getenv("SG_BEDROCK_MODEL", "us.amazon.nova-pro-v1:0")
+        # Default to the Claude inference profile our Bedrock SSO role can actually
+        # invoke (EU region, Claude-only access). Nova / us.* profiles are denied.
+        self.model_id = model_id or os.getenv(
+            "SG_BEDROCK_MODEL", "eu.anthropic.claude-sonnet-4-6"
+        )
         session = boto3.Session(
             profile_name=profile or os.getenv("AWS_PROFILE", "bedrock"),
-            region_name=region or os.getenv("AWS_REGION", "us-east-1"),
+            region_name=region or os.getenv("AWS_REGION", "eu-west-1"),
         )
         self._client = session.client("bedrock-runtime")
 
