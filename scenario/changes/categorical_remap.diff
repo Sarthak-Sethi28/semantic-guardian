@@ -1,0 +1,10 @@
+diff --git a/models/dim_account.sql b/models/dim_account.sql
+index 5555555..6666666 100644
+--- a/models/dim_account.sql
++++ b/models/dim_account.sql
+@@ -3,6 +3,6 @@ select
+     account_id,
+-    account_status,
++    case when account_status = 1 then 0 else 1 end as account_status,
+     updated_at
+ from {{ ref('stg_accounts') }}

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Semantic Guardian</title>
+<style>
+  :root{
+    --bg:#0d0f14; --panel:#151821; --cyan:#5ad0e6; --green:#59c87a;
+    --red:#f06c64; --amber:#e6b45c; --text:#e7eaef; --dim:#7b828d;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1440px;height:900px;overflow:hidden;background:var(--bg);
+    font-family:-apple-system,"Helvetica Neue",Arial,sans-serif;color:var(--text)}
+  .stage{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center}
+
+  /* flowing data lines */
+  .lines{position:absolute;inset:0;opacity:.5}
+  .line{position:absolute;height:2px;left:-40%;width:40%;
+    background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+    animation:flow 3.2s linear infinite}
+  @keyframes flow{to{transform:translateX(360%)}}
+
+  /* shield assembling */
+  .shield{width:132px;height:150px;position:relative;margin-bottom:34px;
+    opacity:0;transform:scale(.6);animation:pop 1s .3s cubic-bezier(.2,.8,.2,1) forwards}
+  .shield svg{filter:drop-shadow(0 0 26px rgba(90,208,230,.55))}
+  @keyframes pop{to{opacity:1;transform:scale(1)}}
+  .ring{stroke-dasharray:360;stroke-dashoffset:360;
+    animation:draw 1.3s .5s ease forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+
+  h1{font-size:76px;font-weight:700;letter-spacing:-1.5px;opacity:0;
+    transform:translateY(18px);animation:rise .9s 1.1s ease forwards;
+    background:linear-gradient(90deg,#fff,var(--cyan));-webkit-background-clip:text;
+    background-clip:text;-webkit-text-fill-color:transparent}
+  .tag{font-size:27px;color:var(--dim);margin-top:20px;opacity:0;
+    transform:translateY(14px);animation:rise .9s 1.5s ease forwards;font-weight:400}
+  .tag b{color:var(--text);font-weight:600}
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+
+  .foot{position:absolute;bottom:54px;font-size:19px;color:var(--dim);
+    letter-spacing:.5px;opacity:0;animation:rise .9s 2.1s ease forwards}
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="lines">
+      <div class="line" style="top:18%;animation-delay:.0s"></div>
+      <div class="line" style="top:34%;animation-delay:.9s"></div>
+      <div class="line" style="top:62%;animation-delay:.4s"></div>
+      <div class="line" style="top:78%;animation-delay:1.3s"></div>
+      <div class="line" style="top:50%;animation-delay:.7s"></div>
+    </div>
+
+    <div class="shield">
+      <svg viewBox="0 0 132 150" width="132" height="150" fill="none">
+        <path class="ring" d="M66 6 L120 28 V78 C120 116 96 138 66 146
+              C36 138 12 116 12 78 V28 Z"
+              stroke="#5ad0e6" stroke-width="3"/>
+        <path d="M46 74 l14 15 l28 -34" stroke="#59c87a" stroke-width="6"
+              stroke-linecap="round" stroke-linejoin="round"
+              style="stroke-dasharray:90;stroke-dashoffset:90;animation:draw 1s 1.4s ease forwards"/>
+      </svg>
+    </div>
+
+    <h1>Semantic Guardian</h1>
+    <div class="tag">The AI agent that catches data bugs <b>every monitor misses</b></div>
+    <div class="foot">reasons about meaning, not just shape &nbsp;·&nbsp; writes durable contracts back to DataHub</div>
+  </div>
+</body>
+</html>

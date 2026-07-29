@@ -17,6 +17,19 @@ breakage is caught deterministically next time.
 
 ---
 
+## Demo
+
+https://github.com/Sarthak-Sethi28/semantic-guardian/raw/main/demo/semantic_guardian_final.mp4
+
+> A ~100s walkthrough: an inverted boolean that every statistical monitor is blind to → the agent
+> reasons from the code + contract → the two-stage cost-aware filter → the durable semantic contracts
+> it writes back into DataHub → the downstream ML blast radius → and the same break caught again with
+> the LLM switched off.
+
+## Architecture
+
+![Semantic Guardian architecture](demo/architecture.png)
+
 ## The problem
 
 The ML failures that cost the most money are silent semantic changes — where a column's *meaning*
@@ -71,11 +84,65 @@ context, glossary/contracts, ownership routing, column-level lineage, ML blast r
 creation, and durable write-back. It doesn't just *read* the graph — it **contributes durable,
 validated context back to it**, which the judging explicitly rewards.
 
-## Status
+## How it works — a two-stage pipeline
 
-🚧 Under active development. See [issues](../../issues) for the prioritized build plan and
-[docs/](docs/) for the architecture and design specs. Sample generated artifacts live in
-[`examples/`](examples/).
+A cheap statistical layer decides *when* to spend the expensive reasoning, and the semantic
+engine works out *what* changed and *what to do*:
+
+```
+ change (PR / diff)
+   │
+   ▼
+ ① Change trigger        ingest the diff as a review EVENT (not a schedule)      [trigger.py]
+   ▼
+ ② Signal extractor      fuse the diff with DataHub-declared semantics           [extractor.py]
+   ▼
+ ③ Anomaly pre-filter    CHEAP stats gate — data-derived baselines, no LLM       [anomaly.py]
+   │                     decides whether the expensive stage is worth running
+   ▼
+ ④ Semantic-delta engine EXPENSIVE reasoning — LLM over diff + contract,         [engine.py]
+   │                     classifies compatible | breaking | insufficient-context,
+   │                     with competing hypotheses; abstains when unsure
+   ▼
+ ⑤ Blast radius          walk DataHub lineage → impacted ML features + owners    [blast_radius.py]
+   ▼
+ ⑥ Owner decision        route to the owner; capture a structured verdict        [decision.py]
+   ▼
+ ⑦ Write-back + contract tag + incident + a durable DataHub assertion so the     [writeback.py,
+                         same break is caught DETERMINISTICALLY next time         contract.py]
+```
+
+Two-stage credit: Jeevan. Every layer takes typed inputs and is tested in isolation; the LLM sits
+behind a one-method interface (`LLMReasoner`) so Bedrock or Anthropic drops in without touching the
+engine.
+
+## Why it's an agent, not a lookup table
+
+- **Nothing is hardcoded.** The anomaly layer's thresholds are derived from each column's own
+  historical baseline (a test asserts two columns flag at *different* absolute deltas). The engine is
+  never handed the heuristic's guess — it reasons from the raw diff + contract and generalizes to
+  changes we never seeded.
+- **Abstention is a feature.** Weak or ambiguous evidence → `insufficient-context`, silently. It
+  doesn't cry wolf.
+- **It contributes back to DataHub.** Validated findings become tags, incidents, and a durable
+  assertion on the graph — knowledge that outlives the chat and is caught without the LLM next time.
+
+## Measured result (seeded)
+
+Run `semantic-guardian benchmark` over a **seeded, hand-labeled** suite of 9 controlled cases
+(3 breaking classes + benign controls + ambiguous). With Claude Sonnet 4.5:
+
+| metric | result |
+|---|---|
+| accuracy | 9 / 9 |
+| precision / recall (breaking) | 100% / 100% |
+| correct abstentions | 2 |
+| false alarms · missed breaks | 0 · 0 |
+
+Honest framing: this is a **small seeded suite**, not production-scale numbers — it demonstrates the
+agent flags real breaks, stays quiet on benign changes, and abstains when unsure. The headline case:
+an **inverted boolean** (`1=active → 1=deleted`) — statistically invisible, distribution unchanged —
+is correctly flagged *breaking* from the diff alone, which distribution monitors cannot see.
 
 ## Quick start
 
@@ -90,15 +157,34 @@ pip install -e ".[dev]"
 # 3. Configure (personal Anthropic API key — never committed)
 cp .env.example .env   # then edit .env
 
-# 4. Run
-semantic-guardian --help
+# 4. Seed the demo world (fct_revenue + a USD contract + a downstream ML feature)
+python scenario/seed.py
+
+# 5. Review a change end to end (real Claude reasoning, live DataHub)
+semantic-guardian review "urn:li:dataset:(urn:li:dataPlatform:dbt,fct_revenue,PROD)" \
+    --diff scenario/changes/unit_scale.diff
+
+# or run the whole pipeline as a scripted demo, and the seeded benchmark:
+python scripts/demo_pipeline.py
+semantic-guardian benchmark        # --offline to run the harness with no model
 ```
 
-## Architecture
+Config: set `ANTHROPIC_API_KEY` in `.env` (gitignored) for Claude, **or** use Amazon Bedrock with no
+key by leaving it unset and having AWS credentials available (`BedrockReasoner`). Either satisfies the
+same `LLMReasoner` interface.
 
-See [docs/architecture.md](docs/architecture.md). In short: a layered pipeline —
-DataHub client → signal extractor → detection engine → blast-radius traversal →
-human validation → write-back + healing — where each layer has one job and is tested in isolation.
+## Reusable as a DataHub Skill
+
+The whole workflow is exposed as one entrypoint, `semantic_guardian.skill:review_change`, with a
+`SKILL` manifest — so another team can register it in their own DataHub agent. It takes a DataHub
+client + a reasoner, so it's decoupled from this app's wiring.
+
+## Testing
+
+```bash
+python -m pytest                 # ~90 unit tests, fully offline (LLM + DataHub mocked)
+python -m pytest -m integration  # live tests against a running local DataHub
+```
 
 ## License
 

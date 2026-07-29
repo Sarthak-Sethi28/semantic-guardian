@@ -1,0 +1,9 @@
+{
+  "assertion_urn": "urn:li:assertion:afc32d61-ff35-4a0a-beb8-29f2339fd24d",
+  "entity_urn": "urn:li:dataset:(urn:li:dataPlatform:dbt,fct_revenue,PROD)",
+  "field_path": "account_status",
+  "type": "Semantic contract: account_status (categorical_remap)",
+  "description": "account_status: 1 = active, 0 = deleted - encoding must not invert. Catches a recurrence deterministically, without re-invoking the model.",
+  "validated_by": "jdoe",
+  "note": "Real assertion URN produced by scripts/demo_killer.py against local DataHub GMS 1.5.0.6."
+}

@@ -1,0 +1,11 @@
+diff --git a/models/fct_revenue.sql b/models/fct_revenue.sql
+index 1111111..2222222 100644
+--- a/models/fct_revenue.sql
++++ b/models/fct_revenue.sql
+@@ -3,7 +3,7 @@ select
+     order_id,
+     customer_id,
+-    revenue,
++    revenue / 100 as revenue,
+     created_at
+ from {{ ref('stg_orders') }}

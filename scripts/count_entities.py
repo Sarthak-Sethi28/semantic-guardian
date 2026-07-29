@@ -1,5 +1,9 @@
 """Quick census of what's in the local DataHub graph."""
-import json, urllib.request, yaml, os
+import json
+import os
+import urllib.request
+
+import yaml
 
 TOKEN = (yaml.safe_load(open(os.path.expanduser("~/.datahubenv"))).get("gms") or {}).get("token") or ""
 GQL = "http://localhost:8081/api/graphql"
