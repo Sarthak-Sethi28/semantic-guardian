@@ -185,10 +185,19 @@ python scenario/seed.py
 semantic-guardian review "urn:li:dataset:(urn:li:dataPlatform:dbt,fct_revenue,PROD)" \
     --diff scenario/changes/unit_scale.diff
 
+# or point it at a REAL GitHub pull request — it fetches the PR's diff, runs the full
+# review, and prints the GitHub-native comment an agent would post on the PR:
+semantic-guardian review-comment "urn:li:dataset:(urn:li:dataPlatform:dbt,fct_revenue,PROD)" \
+    --pr 123 --repo owner/name
+
 # or run the whole pipeline as a scripted demo, and the seeded benchmark:
 python scripts/demo_pipeline.py
 semantic-guardian benchmark        # --offline to run the harness with no model
 ```
+
+Semantic Guardian plugs straight into a pull-request workflow: `review-comment --pr` pulls a
+real PR's diff from the GitHub API, reviews it, and renders the exact review comment to post.
+Firing this automatically on PR-open via a webhook is the next step (see *Roadmap*).
 
 Config: set `ANTHROPIC_API_KEY` in `.env` (gitignored) for Claude, **or** use Amazon Bedrock with no
 key by leaving it unset and having AWS credentials available (`BedrockReasoner`). Either satisfies the
